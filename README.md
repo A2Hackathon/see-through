@@ -1,6 +1,6 @@
-# Hophacks - Loved Ones Assistive App
+# See Through
 
-An Expo React Native prototype that stores familiar-person profiles, verifies faces, detects selected objects, and provides concise spoken feedback for image verification. OpenGlass snapshots are analyzed about every 5 seconds. Snowflake Cortex turns those structured detections into spoken cues, daily-pattern memory, and family alerts. Photos never leave the laptop.
+An Expo React Native app that recognizes familiar faces, detects obstacles, and speaks concise guidance for people who are blind or visually impaired. OpenGlass snapshots are analyzed about every 5 seconds; Snowflake Cortex turns detections into spoken cues, daily-pattern memory, and family alerts. Camera photos never leave the laptop.
 
 ## Getting started
 
@@ -20,8 +20,7 @@ uvicorn glasses_bridge:app --host 0.0.0.0 --port 8002
 uvicorn assistant_service:app --host 0.0.0.0 --port 8003
 ```
 
-Before starting the assistant, copy `server/.env.example` to `server/.env` and
-replace the placeholder with your xAI API key. The `.env` file is ignored by Git.
+Copy `server/.env.example` to `server/.env` and add your xAI API key. The key stays on the laptop, never commit it or add it to `app.json`, `utils/config.js`, or any `EXPO_PUBLIC_` variable.
 
 3. Point [utils/config.js](utils/config.js) at this computer's LAN IP, then start Expo:
 
@@ -29,30 +28,24 @@ replace the placeholder with your xAI API key. The `.env` file is ignored by Git
 npm start
 ```
 
-Open the QR code in Expo Go. Voice control is push-to-talk and uses the
-microphone button.
-
-The xAI key stays on the laptop and must never be added to `app.json`,
-`utils/config.js`, or any `EXPO_PUBLIC_` environment variable.
+Open the QR code in Expo Go. Voice control is push-to-talk via the microphone button.
 
 ## Voice control
 
-- Tap the microphone button, speak, then tap again to send the command.
-- Voice tools can navigate the app; list/check profiles; manage safe spaces;
-  report current place; toggle live GPS; and read the latest glasses scene.
-- Deleting a profile or place and disabling GPS require a separate spoken
-  confirmation. Profile photo enrollment remains caregiver-operated.
-- Use [VOICE_TESTING.md](VOICE_TESTING.md) for the physical-device acceptance flow.
+- Tap the microphone, speak, then tap again to send.
+- Voice tools navigate the app, list/check profiles, manage safe spaces, report current place, toggle live GPS, and read the latest glasses scene.
+- Deleting a profile or place and disabling GPS require a separate spoken confirmation. Photo enrollment stays caregiver-operated.
+- See [VOICE_TESTING.md](VOICE_TESTING.md) for the device acceptance flow.
 
-## Snowflake Cortex (your account setup)
+## Snowflake Cortex setup
 
-Credits come from a student trial, not a separate API store. Do this once:
+One-time setup using a student trial:
 
-1. Use the HopHacks Snowflake booth / Discord signup if you have it. Otherwise [signup.snowflake.com/?trial=st](https://signup.snowflake.com/?trial=st).
-2. Cloud **AWS**, region **US East (N. Virginia)** or **US West (Oregon)**. Edition Enterprise if offered.
-3. Activate email, then in Snowsight: bottom-left name → **Connect a tool to Snowflake**. Copy `https://<account>.snowflakecomputing.com`.
-4. Create a programmatic access token (PAT) under authentication settings. Add a **network policy exception** for hackathon Wi-Fi.
-5. Smoke-test Cortex REST (also the judging CURL clip):
+1. Sign up via the HopHacks booth/Discord, or [signup.snowflake.com/?trial=st](https://signup.snowflake.com/?trial=st).
+2. Cloud **AWS**, region **US East (N. Virginia)** or **US West (Oregon)**, Edition Enterprise if offered.
+3. In Snowsight: bottom-left name → **Connect a tool to Snowflake**. Copy `https://<account>.snowflakecomputing.com`.
+4. Create a programmatic access token (PAT) and add a **network policy exception** for hackathon Wi-Fi.
+5. Smoke-test Cortex REST:
 
 ```bash
 curl "https://<account>.snowflakecomputing.com/api/v2/cortex/v1/chat/completions" \
@@ -61,49 +54,35 @@ curl "https://<account>.snowflakecomputing.com/api/v2/cortex/v1/chat/completions
   -d '{"model":"llama3.1-8b","messages":[{"role":"user","content":"Say hi in 5 words"}]}'
 ```
 
-If that returns `Trial accounts are not allowed`, in a worksheet run:
+If this returns `Trial accounts are not allowed`, run the SQL form in a worksheet, then set `SNOWFLAKE_COMPLETE_VIA_SQL=true` in `.env` (the client also auto-falls back on 403):
 
 ```sql
 SELECT SNOWFLAKE.CORTEX.COMPLETE('llama3.1-8b', 'Say hi in 5 words');
 ```
 
-Then set `SNOWFLAKE_COMPLETE_VIA_SQL=true` in `.env`. The client also auto-falls back on 403.
-
-6. In a Snowsight worksheet, run [server/setup_snowflake.sql](server/setup_snowflake.sql) (warehouse, `SEE_THROUGH.APP.SCENE_EVENTS`, optional Cortex Search).
-7. Copy [server/.env.example](server/.env.example) to `server/.env` and fill `SNOWFLAKE_ACCOUNT_URL` and `SNOWFLAKE_PAT`. Never commit `.env`.
+6. Run [server/setup_snowflake.sql](server/setup_snowflake.sql) in a worksheet (warehouse, `SEE_THROUGH.APP.SCENE_EVENTS`, optional Cortex Search).
+7. Fill `SNOWFLAKE_ACCOUNT_URL` and `SNOWFLAKE_PAT` in `server/.env`. Never commit `.env`.
 
 Without `.env`, glasses and Test recognition still work using local speech templates.
 
 ## Implemented
 
-- Local profile list with name, relationship, and avatar photos.
-- Enrollment with 3-5 photos per person.
-- FastAPI face enrollment and verification using InsightFace embeddings.
-- FastAPI YOLO object detection service.
+- Local profiles with name, relationship, and avatar photos (3–5 enrollment photos per person).
+- FastAPI face enrollment/verification (InsightFace embeddings) and YOLO object detection.
 - OpenGlass BLE capture in `glasses_bridge.py` with spoken Cortex cues and template fallback.
-- Duplicate scene suppression (~20s) so Cortex is not called every frame.
+- Duplicate scene suppression (~20s) so Cortex isn't called every frame.
 - Family brief / Q&A screen (Cortex Search when available, else last N events).
-- Mock home / away safe-space toggle with a Cortex family-alert sentence.
-- Spoken hazard filtering for high-confidence people, cars, and stop signs.
-- Existing visual alerts remain available alongside audio feedback.
-- Local-network service configuration for Expo development.
+- Home/away safe-space toggle with a Cortex family-alert sentence.
+- Spoken hazard filtering for high-confidence people, cars, and stop signs, alongside visual alerts.
 - xAI speech transcription and app-wide function-calling voice control.
 - Foreground GPS safe spaces with voice-controlled add, list, remove, and status.
-- Manual face API and multi-face test scripts.
 
 ## Provisional spatial calibration
 
-The detector adds image geometry, horizontal bearing, and rough monocular
-distance estimates to each YOLO detection. The existing `box` field remains
-`[x, y, width, height]`. Bearing is negative to the left and positive to the
-right, using a provisional 70-degree horizontal field of view. Distance uses
-approximate real-world heights for people, cars, and stop signs; unsupported
-classes return `null`. These values are marked `distance_quality: "provisional"`
-and are for development only until the OpenGlass camera is measured and
-calibrated.
+The detector adds image geometry, horizontal bearing, and rough monocular distance to each YOLO detection. `box` remains `[x, y, width, height]`. Bearing is negative left / positive right using a provisional 70° horizontal FOV. Distance uses approximate real-world heights for people, cars, and stop signs; other classes return `null`. Values are marked `distance_quality: "provisional"` (development only) until the OpenGlass camera is calibrated.
 
-## Remaining Work
+## Remaining work
 
-- Add family push notifications to a second device.
+- Family push notifications to a second device.
 - Calibrate recognition thresholds with positive and unknown-person test data.
-- Add production deployment, background geofencing, retries, logging, and broader physical-device validation.
+- Production deployment, background geofencing, retries, logging, and broader device validation.
