@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+httpx
+bleak
+ultralytics
+insightface
+opencv-python-headless
+numpy
+python-multipart
