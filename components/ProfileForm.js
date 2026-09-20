@@ -192,7 +192,12 @@ export default function ProfileForm({ initial = null, onSave, onCancel }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.containerContent}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onCancel} style={styles.cancelButton}>
+        <TouchableOpacity
+          onPress={onCancel}
+          style={styles.cancelButton}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel profile form"
+        >
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{initial ? 'Edit Profile' : 'New Profile'}</Text>
@@ -200,7 +205,13 @@ export default function ProfileForm({ initial = null, onSave, onCancel }) {
       </View>
 
       <View style={styles.photoSection}>
-        <TouchableOpacity onPress={handleAddPhotoPress} style={styles.avatarCircle}>
+        <TouchableOpacity
+          onPress={handleAddPhotoPress}
+          style={styles.avatarCircle}
+          accessibilityRole="button"
+          accessibilityLabel={`Add profile photo. ${photos.length} of 5 photos added`}
+          accessibilityHint="Caregiver assistance is recommended"
+        >
           {photos[0] ? (
             <Image source={{ uri: photos[0] }} style={styles.avatarImage} />
           ) : (
@@ -217,13 +228,23 @@ export default function ProfileForm({ initial = null, onSave, onCancel }) {
             {photos.map((p, i) => (
               <View key={i} style={styles.thumbWrap}>
                 <Image source={{ uri: p }} style={styles.thumb} />
-                <TouchableOpacity onPress={() => removePhoto(i)} style={styles.thumbRemove}>
+                <TouchableOpacity
+                  onPress={() => removePhoto(i)}
+                  style={styles.thumbRemove}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove photo ${i + 1}`}
+                >
                   <Ionicons name="close" size={12} color={COLORS.ocean950} />
                 </TouchableOpacity>
               </View>
             ))}
             {photos.length < 5 && (
-              <TouchableOpacity onPress={handleAddPhotoPress} style={styles.thumbAdd}>
+              <TouchableOpacity
+                onPress={handleAddPhotoPress}
+                style={styles.thumbAdd}
+                accessibilityRole="button"
+                accessibilityLabel="Add another profile photo"
+              >
                 <Ionicons name="add" size={22} color={COLORS.sky300} />
               </TouchableOpacity>
             )}
@@ -238,6 +259,7 @@ export default function ProfileForm({ initial = null, onSave, onCancel }) {
         value={name}
         onChangeText={setName}
         style={styles.input}
+        accessibilityLabel="Profile name"
       />
 
       <Text style={styles.label}>RELATIONSHIP</Text>
@@ -247,9 +269,15 @@ export default function ProfileForm({ initial = null, onSave, onCancel }) {
         value={relationship}
         onChangeText={setRelationship}
         style={styles.input}
+        accessibilityLabel="Relationship"
       />
 
-      <TouchableOpacity onPress={handleSubmit} style={styles.saveButton}>
+      <TouchableOpacity
+        onPress={handleSubmit}
+        style={styles.saveButton}
+        accessibilityRole="button"
+        accessibilityLabel="Save profile"
+      >
         <Text style={styles.saveButtonText}>Save Profile</Text>
       </TouchableOpacity>
     </ScrollView>

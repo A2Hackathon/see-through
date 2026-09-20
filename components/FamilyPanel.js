@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -233,11 +234,39 @@ export default function PlacesPanel({ onClose, visible = true }) {
     }
   };
 
+  const confirmRemoveSpace = (space) => {
+    Alert.alert(
+      'Remove saved place?',
+      `Remove ${space.name} from your safe spaces?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => handleRemoveSpace(space.id),
+        },
+      ]
+    );
+  };
+
   const handleToggleGps = async () => {
     setError('');
     if (liveGps) {
-      await setLiveGpsEnabled(false);
-      setLiveGps(false);
+      Alert.alert(
+        'Turn off live GPS?',
+        'You will stop receiving saved-place safety alerts.',
+        [
+          { text: 'Keep on', style: 'cancel' },
+          {
+            text: 'Turn off',
+            style: 'destructive',
+            onPress: async () => {
+              await setLiveGpsEnabled(false);
+              setLiveGps(false);
+            },
+          },
+        ]
+      );
       return;
     }
     const granted = await requestLiveGpsPermission();
@@ -256,7 +285,12 @@ export default function PlacesPanel({ onClose, visible = true }) {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={onClose}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+        >
           <Text style={styles.backButtonText}>‹</Text>
         </TouchableOpacity>
         <Text style={styles.title}>My places</Text>
@@ -267,6 +301,9 @@ export default function PlacesPanel({ onClose, visible = true }) {
           <TouchableOpacity
             onPress={handleToggleGps}
             style={[styles.awayButton, liveGps && styles.toggleOn]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: liveGps }}
+            accessibilityLabel="Live GPS safety alerts"
           >
             <Text style={[styles.toggleText, liveGps && styles.toggleTextOn]}>
               {liveGps ? 'Live GPS on' : 'Use live GPS'}
@@ -279,6 +316,7 @@ export default function PlacesPanel({ onClose, visible = true }) {
             value={spaceName}
             onChangeText={setSpaceName}
             style={styles.input}
+            accessibilityLabel="Saved place name"
           />
           <TextInput
             placeholder="Search address or place"
@@ -287,6 +325,7 @@ export default function PlacesPanel({ onClose, visible = true }) {
             onChangeText={handleAddressChange}
             autoCorrect={false}
             style={styles.input}
+            accessibilityLabel="Search address or place"
           />
           {searchingAddress ? (
             <Text style={styles.spaceHint}>Searching maps…</Text>
@@ -298,6 +337,8 @@ export default function PlacesPanel({ onClose, visible = true }) {
                   key={place.id}
                   onPress={() => handleSelectAddress(place)}
                   style={styles.suggestRow}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${place.title}. ${place.address}`}
                 >
                   <Text style={styles.suggestTitle}>{place.title}</Text>
                   <Text style={styles.suggestAddress}>{place.address}</Text>
@@ -312,6 +353,9 @@ export default function PlacesPanel({ onClose, visible = true }) {
             onPress={handleAddSpace}
             style={styles.askButton}
             disabled={addingSpace}
+            accessibilityRole="button"
+            accessibilityLabel="Add selected address as a safe space"
+            accessibilityState={{ disabled: addingSpace }}
           >
             <Text style={styles.askButtonText}>
               {addingSpace ? 'Adding…' : 'Add address'}
@@ -346,8 +390,10 @@ export default function PlacesPanel({ onClose, visible = true }) {
                     </Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => handleRemoveSpace(space.id)}
+                    onPress={() => confirmRemoveSpace(space)}
                     style={styles.removeButton}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${space.name} from safe spaces`}
                   >
                     <Text style={[styles.removeButtonText, selected && styles.removeButtonTextOn]}>
                       Remove
@@ -395,7 +441,11 @@ export default function PlacesPanel({ onClose, visible = true }) {
           <Text style={styles.alertBody}>{alertText}</Text>
         </View>
       ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }

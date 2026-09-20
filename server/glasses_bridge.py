@@ -138,127 +138,28 @@ def _jpeg_sharpness(jpeg_bytes: bytes) -> float:
     return jpeg_sharpness(jpeg_bytes)
 
 
-# ---------------------------------------------------------------------------
-# Orientation: calibrate ONCE (first face), then hardcode forever.
-# After you see "Orientation LOCKED at X°", that value is written to
-# glasses_orientation.py and used on every later start — no re-scan.
-# ---------------------------------------------------------------------------
-try:
-    from glasses_orientation import FIXED_ORIENTATION_DEG
-except ImportError:
-    FIXED_ORIENTATION_DEG = None  # None => auto-calibrate on first face
-
-_ORIENTATION_CONFIG_PATH = Path(__file__).with_name("glasses_orientation.py")
-
-_orientation_deg = 0
-_orientation_locked = False
+# The camera mount is fixed: always rotate 90° clockwise. Do not probe faces
+# at other angles or rewrite this value at runtime.
+FIXED_ORIENTATION_DEG = 90
 
 
 def _load_fixed_orientation() -> None:
-    global _orientation_deg, _orientation_locked
-    if FIXED_ORIENTATION_DEG is None:
-        return
-    _orientation_deg = int(FIXED_ORIENTATION_DEG) % 360
-    _orientation_locked = True
     print(
-        f"Using hardcoded FIXED_ORIENTATION_DEG={_orientation_deg}° "
-        "(skipping auto-calibrate)"
+        f"Using fixed orientation {FIXED_ORIENTATION_DEG}° "
+        "(calibration and re-probing disabled)"
     )
-
-
-def _write_fixed_orientation(degrees: int) -> None:
-    """Persist the calibrated angle so the next process start hardcodes it."""
-    degrees = int(degrees) % 360
-    contents = (
-        "# Auto-written by glasses_bridge after one-time orientation calibrate.\n"
-        "# Delete this file to re-calibrate, or edit the number if you remount the camera.\n"
-        f"FIXED_ORIENTATION_DEG = {degrees}\n"
-    )
-    _ORIENTATION_CONFIG_PATH.write_text(contents, encoding="utf-8")
-    print("=" * 60)
-    print(f"HARDCODED orientation -> glasses_orientation.py")
-    print(f"FIXED_ORIENTATION_DEG = {degrees}")
-    print("=" * 60)
-
-
-async def _score_faces(client: httpx.AsyncClient, jpeg_bytes: bytes) -> tuple:
-    """Return (face_count, max_det_score, max_face_area) from face_service."""
-    files = {"file": ("frame.jpg", jpeg_bytes, "image/jpeg")}
-    try:
-        response = await client.post(f"{FACE_URL}/face_score", files=files)
-    except Exception as exc:  # noqa: BLE001
-        print("face_score request failed:", exc)
-        return (0, 0.0, 0.0)
-
-    if response.status_code == 404:
-        print(
-            "ERROR: /face_score returned 404 — face_service is an OLD process. "
-            "Stop it and restart: uvicorn face_service:app --host 0.0.0.0 --port 8001"
-        )
-        return (0, 0.0, 0.0)
-
-    if response.status_code != 200:
-        print(f"face_score HTTP {response.status_code}: {response.text[:200]}")
-        return (0, 0.0, 0.0)
-
-    payload = response.json()
-    return (
-        int(payload.get("face_count") or 0),
-        float(payload.get("max_det_score") or 0.0),
-        float(payload.get("max_face_area") or 0.0),
-    )
-
-
-async def _calibrate_orientation(jpeg_bytes: bytes) -> int:
-    """One-time: try 0/90/180/270, lock + hardcode the strongest face angle."""
-    global _orientation_deg, _orientation_locked
-
-    best_deg = 0
-    best_key = (-1, -1.0, -1.0)
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        for degrees in (0, 90, 180, 270):
-            rotated = rotate_jpeg(jpeg_bytes, degrees)
-            if rotated is None:
-                continue
-            face_count, det_score, face_area = await _score_faces(client, rotated)
-            key = (face_count, det_score, face_area)
-            print(
-                f"Calibrate orientation {degrees}°: faces={face_count} "
-                f"det={det_score:.3f} area={face_area:.0f}"
-            )
-            if key > best_key:
-                best_key = key
-                best_deg = degrees
-
-    if best_key[0] > 0:
-        _orientation_deg = best_deg
-        _orientation_locked = True
-        _write_fixed_orientation(best_deg)
-        print(f"Orientation LOCKED at {_orientation_deg}° clockwise for all future frames")
-    else:
-        print("Orientation calibrate: no faces yet; will retry on next sharp frame")
-
-    return _orientation_deg
 
 
 def _apply_locked_orientation(jpeg_bytes: bytes) -> tuple[bytes, int]:
-    """Apply the locked/hardcoded rotation (or 0° if not calibrated yet)."""
-    if _orientation_deg == 0:
-        return jpeg_bytes, 0
-    rotated = rotate_jpeg(jpeg_bytes, _orientation_deg)
+    """Apply the permanent 90° clockwise camera rotation."""
+    rotated = rotate_jpeg(jpeg_bytes, FIXED_ORIENTATION_DEG)
     if rotated is None:
-        return jpeg_bytes, _orientation_deg
-    return rotated, _orientation_deg
+        return jpeg_bytes, FIXED_ORIENTATION_DEG
+    return rotated, FIXED_ORIENTATION_DEG
 
 
 async def _orient_jpeg(jpeg_bytes: bytes) -> tuple[bytes, int]:
-    """
-    If FIXED_ORIENTATION_DEG / glasses_orientation.py is set, only rotate.
-    Otherwise calibrate once on the first frame with a face, then hardcode.
-    """
-    if not _orientation_locked:
-        await _calibrate_orientation(jpeg_bytes)
+    """Rotate to the fixed camera orientation without checking for faces."""
     return _apply_locked_orientation(jpeg_bytes)
 
 
@@ -277,42 +178,8 @@ def _save_debug_frame(jpeg_bytes: bytes, label: str = "last_oriented") -> None:
 
 async def _analyze_photo(jpeg_bytes: bytes) -> dict:
     """Stage B: fixed orientation, then InsightFace verify + YOLO detect."""
-    global _orientation_deg
-
     oriented, orientation_deg = await _orient_jpeg(jpeg_bytes)
     _save_debug_frame(oriented, "last_oriented")
-
-    # If locked angle finds no face, probe other angles once and re-lock if needed.
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        face_count, det_score, _area = await _score_faces(client, oriented)
-        if face_count == 0 and _orientation_locked:
-            print(
-                f"No face at locked {orientation_deg}° — probing other angles once..."
-            )
-            best_deg = orientation_deg
-            best_key = (0, 0.0, 0.0)
-            best_jpeg = oriented
-            for degrees in (0, 90, 180, 270):
-                if degrees == orientation_deg:
-                    continue
-                rotated = rotate_jpeg(jpeg_bytes, degrees)
-                if rotated is None:
-                    continue
-                key = await _score_faces(client, rotated)
-                print(
-                    f"  probe {degrees}°: faces={key[0]} det={key[1]:.3f}"
-                )
-                if key > best_key:
-                    best_key = key
-                    best_deg = degrees
-                    best_jpeg = rotated
-            if best_key[0] > 0:
-                _orientation_deg = best_deg
-                _write_fixed_orientation(best_deg)
-                oriented = best_jpeg
-                orientation_deg = best_deg
-                _save_debug_frame(oriented, "last_oriented")
-                print(f"Re-LOCKED orientation to {best_deg}°")
 
     files_verify = {"file": ("frame.jpg", oriented, "image/jpeg")}
     files_detect = {"file": ("frame.jpg", oriented, "image/jpeg")}

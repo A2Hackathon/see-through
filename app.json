@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Hophacks",
+    "slug": "hophacks",
+    "owner": "hle12",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "orientation": "portrait",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Allow connection to local dev servers for development",
+        "NSCameraUsageDescription": "Allow camera access to capture frames",
+        "NSPhotoLibraryUsageDescription": "Allow photo library access for enrollment",
+        "NSLocationWhenInUseUsageDescription": "Allow location access to check whether they are at a saved safe space",
+        "NSMicrophoneUsageDescription": "Allow microphone access for voice commands"
+      }
+    },
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-font",
+      "expo-notifications",
+      "expo-location",
+      "expo-asset",
+      "expo-audio"
+    ]
+  }
+}

@@ -177,7 +177,8 @@ export default function ArchitectureGraph({ visible = true }) {
       <FadeSlide value={header}>
         <Text style={styles.kicker}>ARCHITECTURE</Text>
         <Text style={styles.captionTop}>
-          On-device vision. Snowflake Cortex for speech, memory, and alerts.
+          Local laptop vision, xAI voice control, and optional Snowflake event
+          intelligence.
         </Text>
       </FadeSlide>
 
@@ -188,29 +189,29 @@ export default function ArchitectureGraph({ visible = true }) {
               icon="glasses-outline"
               colors={[COLORS.coralSoft, COLORS.coral]}
               title="Smart glasses"
-              subtitle="live scene capture"
+              subtitle="periodic JPEG photo bursts"
             />
             <View style={styles.stackGap} />
             <Node
               icon="phone-portrait-outline"
               colors={['#2d2a20', COLORS.ocean950]}
               title="Phone app"
-              subtitle="voice, places, reminders"
+              subtitle="push-to-talk, places & speech"
             />
             <View style={styles.stackGap} />
             <Node
               icon="person-outline"
               colors={[COLORS.olive, COLORS.oliveDeep]}
               title="Wearer"
-              subtitle="private control"
+              subtitle="accessible private control"
             />
           </Region>
         </FadeSlide>
 
         <Animated.View style={[styles.midArrows, { opacity: arrows }]}>
-          <ArrowRight label="scene frames" />
+          <ArrowRight label="BLE JPEG bursts" />
           <View style={styles.midArrowSpacer} />
-          <ArrowRight label="location & cues" />
+          <ArrowRight label="GPS, app tools & cues" />
           <View style={styles.midArrowSpacer} />
           <View style={styles.returnArrow}>
             <View style={styles.arrowHeadLeft} />
@@ -220,23 +221,23 @@ export default function ArchitectureGraph({ visible = true }) {
               end={{ x: 1, y: 0.5 }}
               style={styles.hLine}
             />
-            <Text style={styles.arrowLabel}>personal reminders</Text>
+            <Text style={styles.arrowLabel}>spoken guidance</Text>
           </View>
         </Animated.View>
 
         <FadeSlide value={colB}>
           <Region
-            title="On-device vision"
+            title="Local laptop vision"
             glow={COLORS.oliveDeep}
             fill={COLORS.mist}
-            sideLabel="Photos never leave the device"
+            sideLabel="Camera photos stop at the paired laptop"
           >
             <View style={styles.centerNode}>
               <Node
                 icon="laptop-outline"
                 colors={['#494537', COLORS.ocean950]}
                 title="Vision pipeline"
-                subtitle="ingest and orchestrate"
+                subtitle="BLE ingest and orchestration"
               />
             </View>
             <View style={styles.splitArrows}>
@@ -247,60 +248,60 @@ export default function ArchitectureGraph({ visible = true }) {
               <Node
                 icon="scan-outline"
                 colors={[COLORS.olive, COLORS.oliveDeep]}
-                title="Object detection"
-                subtitle="obstacles & distance"
+                title="YOLO"
+                subtitle="objects, distance & bearing"
               />
               <Node
                 icon="person-circle-outline"
                 colors={[COLORS.orangeSoft, COLORS.orange]}
-                title="Face recognition"
-                subtitle="known people only"
+                title="InsightFace"
+                subtitle="local known-person matching"
               />
             </View>
           </Region>
         </FadeSlide>
 
         <Animated.View style={[styles.midArrows, { opacity: arrows }]}>
-          <ArrowRight label="scene events" />
-          <Text style={styles.noImages}>no photos</Text>
+          <ArrowRight label="structured metadata" />
+          <Text style={styles.noImages}>no camera photos</Text>
         </Animated.View>
 
         <FadeSlide value={colC}>
           <Region
-            title="Snowflake Cortex"
+            title="Cloud services"
             glow={COLORS.cyanDeep}
             fill={COLORS.mist}
-            sideLabel="Speech, memory, and alerts"
+            sideLabel="No camera photos enter the cloud"
           >
             <View style={styles.splitRow}>
               <Node
-                icon="chatbubble-ellipses-outline"
+                icon="sparkles-outline"
                 colors={[COLORS.cyan, COLORS.cyanDeep]}
-                title="Cortex Complete"
-                subtitle="spoken guidance"
+                title="xAI assistant"
+                subtitle="transcription & app tools"
               />
               <Node
                 icon="server-outline"
                 colors={['#494537', COLORS.ocean950]}
-                title="Event store"
-                subtitle="daily activity log"
+                title="Snowflake Cortex"
+                subtitle="narration & event history"
               />
             </View>
             <View style={styles.splitArrows}>
-              <ArrowDown label="index" />
-              <ArrowDown label="classify" />
+              <ArrowDown label="select" />
+              <ArrowDown label="analyze" />
             </View>
             <View style={styles.splitRow}>
               <Node
-                icon="search-outline"
+                icon="construct-outline"
                 colors={[COLORS.cyanDeep, '#3d8a9c']}
-                title="Cortex Search"
-                subtitle="retrieve the day"
+                title="App tools"
+                subtitle="confirmed phone actions"
               />
               <Node
                 icon="shield-checkmark-outline"
                 colors={[COLORS.coralSoft, COLORS.coral]}
-                title="Routine reminders"
+                title="Safety alerts"
                 subtitle="unusual activity only"
               />
             </View>

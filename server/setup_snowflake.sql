@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS SCENE_EVENTS (
 -- inside_safe_zone is derived from PLACE (home=true, away=false) and stored
 -- in SUMMARY_TEXT. Phone GPS / a lat-lng geofence can replace PLACE later.
 
+-- Optional event index. Skip this if CREATE CORTEX SEARCH SERVICE is not
+-- allowed on your trial; routine reminders still use recent event rows.
 CREATE OR REPLACE CORTEX SEARCH SERVICE SCENE_SEARCH
   ON SUMMARY_TEXT
   ATTRIBUTES PLACE, PERSON_NAME, MATCHED

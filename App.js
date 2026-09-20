@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,8 +37,10 @@ import {
   notifyGlassesResult,
 } from './utils/notifications';
 import { useLiveGps } from './utils/liveGps';
+import { createAppActionRegistry } from './utils/appActions';
+import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 
-const GLASSES_POLL_INTERVAL_MS = 5000;
+const GLASSES_POLL_INTERVAL_MS = 3000;
 
 // Warm editorial palette inspired by the ivory, coral, amber and ice-blue
 // lighting in the reference.
@@ -195,6 +198,22 @@ export default function App() {
   const [safeZonesModalVisible, setSafeZonesModalVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
+  const profilesRef = useRef([]);
+  const latestSceneRef = useRef(null);
+  const lastAlertRef = useRef('');
+  const lastAssistantResponseRef = useRef('');
+  const currentScreenRef = useRef('home');
+
+  profilesRef.current = profiles;
+  currentScreenRef.current = profileFormOpen
+    ? 'profiles'
+    : profilesModalVisible
+      ? 'profiles'
+      : safeZonesModalVisible
+        ? 'places'
+        : infoModalVisible
+          ? 'info'
+          : 'home';
 
   const gradientOpacities = useRef(
     BG_GRADIENTS.map(
@@ -324,6 +343,50 @@ export default function App() {
     saveProfiles(filtered);
   };
 
+  const confirmDeleteProfile = (profile) => {
+    Alert.alert(
+      'Delete profile?',
+      `Delete ${profile.name}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleDelete(profile.id),
+        },
+      ]
+    );
+  };
+
+  const actionRegistry = useMemo(
+    () =>
+      createAppActionRegistry({
+        getProfiles: () => profilesRef.current,
+        saveProfiles,
+        navigate: (section) => {
+          setInfoModalVisible(section === 'info');
+          setSafeZonesModalVisible(section === 'places');
+          setProfilesModalVisible(section === 'profiles');
+          if (section !== 'profiles') {
+            setProfileFormOpen(false);
+            setEditingProfile(null);
+          }
+        },
+        getCurrentScreen: () => currentScreenRef.current,
+        getLatestScene: () => latestSceneRef.current,
+        getLastAlert: () => lastAlertRef.current,
+        getLastResponse: () => lastAssistantResponseRef.current,
+      }),
+    []
+  );
+
+  const voiceAssistant = useVoiceAssistant({
+    registry: actionRegistry,
+    onResponse: (message) => {
+      lastAssistantResponseRef.current = message;
+    },
+  });
+
   // Polls glasses_bridge.py.
   const lastGlassesTimestampRef =
     useRef(null);
@@ -352,11 +415,13 @@ export default function App() {
 
         lastGlassesTimestampRef.current =
           result.timestamp;
+        latestSceneRef.current = result;
 
         const notification =
           await notifyGlassesResult(result);
 
         if (notification?.body) {
+          lastAlertRef.current = notification.body;
           await speakText(
             notification.body
           );
@@ -476,6 +541,8 @@ export default function App() {
         <TouchableOpacity
           onPress={() => setInfoModalVisible(true)}
           style={styles.infoButton}
+          accessibilityRole="button"
+          accessibilityLabel="Open information about how See Through works"
         >
           <Ionicons
             name="information-circle-outline"
@@ -509,6 +576,47 @@ export default function App() {
         />
       </View>
 
+      <View
+        style={styles.voiceDock}
+        accessibilityLiveRegion="polite"
+        accessibilityLabel={`Voice assistant. ${voiceAssistant.statusMessage}`}
+      >
+        <TouchableOpacity
+          onPress={voiceAssistant.toggleRecording}
+          onLongPress={voiceAssistant.cancel}
+          accessibilityRole="button"
+          accessibilityLabel={
+            voiceAssistant.status === 'listening'
+              ? 'Stop recording and send voice command'
+              : 'Start voice command'
+          }
+          accessibilityHint="Tap to start or finish speaking. Hold to cancel."
+          style={[
+            styles.voiceButton,
+            voiceAssistant.status === 'listening' && styles.voiceButtonListening,
+          ]}
+        >
+          <Ionicons
+            name={voiceAssistant.status === 'listening' ? 'stop' : 'mic'}
+            size={26}
+            color={COLORS.warmWhite}
+          />
+        </TouchableOpacity>
+        <View style={styles.voiceCopy}>
+          <Text style={styles.voiceStatus}>{voiceAssistant.statusMessage}</Text>
+          {voiceAssistant.transcript ? (
+            <Text numberOfLines={1} style={styles.voiceTranscript}>
+              {voiceAssistant.transcript}
+            </Text>
+          ) : null}
+          {voiceAssistant.error ? (
+            <Text accessibilityRole="alert" style={styles.voiceError}>
+              {voiceAssistant.error}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+
       <Modal
         visible={infoModalVisible}
         animationType="slide"
@@ -527,6 +635,8 @@ export default function App() {
             <TouchableOpacity
               onPress={() => setInfoModalVisible(false)}
               style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel="Back to home"
             >
               <Text style={styles.backButtonText}>‹</Text>
             </TouchableOpacity>
@@ -548,9 +658,9 @@ export default function App() {
               <ArchitectureGraph visible={infoModalVisible} />
             </ScrollView>
             <Text style={styles.infoCaption}>
-              Swipe sideways to see the full graph. Vision stays on-device.
-              Snowflake Cortex handles speech, daily memory, and personal reminders —
-              never the photos themselves.
+              Swipe sideways to see the full graph. Photos stay on the paired laptop.
+              xAI handles voice commands; optional Snowflake services add narration
+              and event intelligence.
             </Text>
           </ScrollView>
         </LinearGradient>
@@ -588,6 +698,8 @@ export default function App() {
                     setProfilesModalVisible(false)
                   }
                   style={styles.backButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to home"
                 >
                   <Text
                     style={styles.backButtonText}
@@ -608,6 +720,8 @@ export default function App() {
                     setProfileFormOpen(true);
                   }}
                   style={styles.addProfileButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add profile with caregiver assistance"
                 >
                   <Text style={styles.addProfileButtonText}>Add</Text>
                 </TouchableOpacity>
@@ -687,6 +801,8 @@ export default function App() {
                           handleEdit(item)
                         }
                         style={styles.link}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit profile for ${item.name}`}
                       >
                         <Text
                           style={styles.linkText}
@@ -696,12 +812,12 @@ export default function App() {
                       </TouchableOpacity>
 
                       <TouchableOpacity
-                        onPress={() =>
-                          handleDelete(item.id)
-                        }
+                        onPress={() => confirmDeleteProfile(item)}
                         style={
                           styles.deleteLink
                         }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete profile for ${item.name}`}
                       >
                         <Text
                           style={[
@@ -969,6 +1085,57 @@ const styles = StyleSheet.create({
       COLORS.pillDangerText,
   },
 
+  voiceDock: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 24,
+    minHeight: 68,
+    borderRadius: 24,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 245, 0.92)',
+    borderWidth: 1,
+    borderColor: COLORS.glassBorderStrong,
+    shadowColor: '#000',
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 7,
+  },
+  voiceButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.ocean950,
+  },
+  voiceButtonListening: {
+    backgroundColor: COLORS.coral,
+  },
+  voiceCopy: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  voiceStatus: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 13,
+    color: COLORS.ocean50,
+  },
+  voiceTranscript: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 11,
+    color: COLORS.ocean300,
+    marginTop: 2,
+  },
+  voiceError: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 10,
+    color: COLORS.pillDangerText,
+    marginTop: 2,
+  },
   modalContainer: {
     flex: 1,
     paddingTop: 64,

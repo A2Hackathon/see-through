@@ -184,13 +184,13 @@ const PARTS = [
     id: 'camera',
     n: '1',
     title: 'Camera',
-    body: 'OV2640 JPEG bursts over BLE every ~5s for on-device vision — not a live stream, and no frames leave the laptop.',
+    body: 'The OV2640 sends periodic three-photo JPEG bursts over Bluetooth LE for local laptop vision. Timing depends on the wireless transfer and vision processing; this is not a live video stream.',
   },
   {
     id: 'antenna',
     n: '2',
     title: 'Antenna',
-    body: 'External 2.4 GHz patch antenna extends BLE range up to 330 ft.',
+    body: 'The external 2.4 GHz patch antenna supports the glasses’ Bluetooth LE connection to the paired laptop.',
   },
   {
     id: 'sense',
@@ -426,6 +426,10 @@ export default function Esp32SenseViewer() {
                   )
                 }
                 style={styles.badgeHit}
+                accessibilityRole="button"
+                accessibilityLabel={`${part.n}. ${part.title}`}
+                accessibilityHint={`Shows details about the ${part.title.toLowerCase()}`}
+                accessibilityState={{ expanded: active }}
               >
                 <Text
                   style={[styles.badgeText, active && styles.badgeTextActive]}
@@ -447,6 +451,10 @@ export default function Esp32SenseViewer() {
                 setSelectedId((current) => (current === part.id ? null : part.id))
               }
               style={[styles.chip, active && styles.chipActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`${part.n}. ${part.title}`}
+              accessibilityHint={`Shows details about the ${part.title.toLowerCase()}`}
+              accessibilityState={{ expanded: active }}
             >
               <Text style={[styles.chipText, active && styles.chipTextActive]}>
                 {part.n}  {part.title}

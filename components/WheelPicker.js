@@ -184,7 +184,16 @@ function WheelItem({ item, index, itemHeight, scrollY, isSelected, theme, onPres
   });
 
   return (
-    <Pressable onPress={onPress} style={[styles.row, { height: itemHeight }]}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.row, { height: itemHeight }]}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.label}. ${item.description || ''}`}
+      accessibilityHint={
+        isSelected ? 'Activates this quick action' : 'Selects this quick action'
+      }
+      accessibilityState={{ selected: isSelected }}
+    >
       {/* Layer 1 — native-driven wheel position effect only */}
       <Animated.View style={{ opacity, transform: [{ scale }], width: '94%', alignSelf: 'center' }}>
 
